@@ -9,9 +9,10 @@
 #include<math.h> 
 #define STB_IMAGE_IMPLEMENTATION
 #include"stb_image.h"
-float px, py;  
+float px, py,pz;  
 float speed; 
-float objx, objy, objz;
+float objx, objy, objz; 
+float xrotation = 0;
 GLuint sonictexture;  
 GLuint blocktex1; 
 GLuint backgroundtex1;
@@ -68,14 +69,14 @@ GLuint loadTexture(const char* filename)
 }
 
 void playerdraw()
-{     
+{      
 	
 	glPushMatrix(); 
-
+	
 	glEnable(GL_TEXTURE_2D); 
 	glBindTexture(GL_TEXTURE_2D,sonictexture);
-	glTranslatef(px, py, 0);
-	glScalef(0.1, 0.3, 0); 
+		glTranslatef(px,-1,pz-4);
+	glScalef(0.5, 1, 0.5); 
 	glColor3f(1, 1, 1);
 	glBegin(GL_QUADS);
 	glTexCoord2f(0, 0); glVertex2f(1,1);
@@ -83,21 +84,25 @@ void playerdraw()
 	glTexCoord2f(1, 1); glVertex2f(-1,0);
 	glTexCoord2f(0, 1); glVertex2f(1,0);
 	glEnd();  
-	glDisable(GL_TEXTURE_2D);
-	glPopMatrix();
+	glDisable(GL_TEXTURE_2D); 
+	
+	glPopMatrix(); 
+	
 }
 
-void trueorfalse()
-{    
-	glTranslatef(-px, -py, 0);
+void player()
+{
+	
 	glPushMatrix();
 	if (MOV.up)
 	{
-		py += 0.1;
+		pz -= speed; 
+		speedcontrol = true;
 	}
 	if (MOV.down)
 	{
-		py -= 0.1;
+		pz += speed; 
+		speedcontrol = true;
 	}
 	if (MOV.right)
 	{
@@ -110,8 +115,19 @@ void trueorfalse()
 		px -= speed;  
 		speedcontrol = true;
 		sonictexture = loadTexture("C:/Users/Andrew Alexander/source/repos/Sonic CD 2/Sonic CD 2/sonk2.png");
-	} 
-	glPopMatrix();
+	}   
+	
+	glPopMatrix(); 
+
+	glRotatef(-xrotation,0,1,0);
+	glTranslatef(-px, -py, -pz);  
+	
+}
+
+void specialkeys(int key, int, int)
+{
+	
+	glutPostRedisplay();
 }
 
 void timer(int)
@@ -121,13 +137,13 @@ void timer(int)
 
 	if (speedcontrol == true)
 	{
-		speed += 0.0005;
+		speed += 0.01;
 	}
 	else
 	{
-		speed = 0.05;
+		speed = 1.5;
 	}
-	py -= 0.05; 
+	//py += 0.05; 
 	
 	if (collision(px, py, objx-1 , objx+1 , objy-0.1 , objy+1 ))
 	{
@@ -139,25 +155,7 @@ void timer(int)
 	
 } 
 
-void floor()
-{
-	glPushMatrix();
-	glEnable(GL_TEXTURE_2D); 
-	glBindTexture(GL_TEXTURE_2D,blocktex1);
 
-	glColor3f(1,1,1); 
-	glTranslatef(0, -0.95, 0);
-	glBegin(GL_POLYGON); 
-	glTexCoord2f(1,1); glVertex2f(1, 0);
-	glTexCoord2f(0,1); glVertex2f(-1,0);
-	glTexCoord2f(0,0); glVertex2f(-1,1);
-	glTexCoord2f(1,0); glVertex2f(1, 1);
-	glEnd();
-	
-	glDisable(GL_TEXTURE_2D);
-
-	glPopMatrix();
-} 
 
 void background()
 {
@@ -180,6 +178,31 @@ void background()
 	glPopMatrix();
 }
 
+void Floor()
+{
+
+	glPushMatrix();
+
+	glEnable(GL_TEXTURE_2D);
+	glBindTexture(GL_TEXTURE_2D, blocktex1);
+	glColor3f(1, 1, 1);
+	glTranslatef(0, 0, 0);
+	glScalef(1, 1, 3);
+	glBegin(GL_QUADS);
+	glTexCoord2f(0, 0); glVertex3f(-50.0, -5.0, -50.0);
+	glTexCoord2f(1, 0); glVertex3f(50.0, -5.0, -50.0);
+	glTexCoord2f(1, 1); glVertex3f(50.0, -5.0, 50.0);
+	glTexCoord2f(0, 1); glVertex3f(-50.0, -5.0, 50.0);
+	glEnd();
+
+	glDisable(GL_TEXTURE_2D);
+
+	glPopMatrix();
+
+
+
+}
+
 void object()
 {     
 	glPushMatrix();
@@ -192,29 +215,30 @@ void object()
 }
 void drawing()
 {
-	glClear(GL_COLOR_BUFFER_BIT); 
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); 
 	glLoadIdentity();   
 	
-	trueorfalse(); 
-	background();
-	playerdraw();  
 	
-	floor();   
+	player();
+	//background();	
 	
-	glPushMatrix();
-	glTranslatef(1,0,0); 
-	floor(); 
-	glPopMatrix(); 
+	Floor();
+	
+	
 
 	object();
+	playerdraw();
+	glutSwapBuffers(); 
 	glFlush();
-	glutSwapBuffers();
 }
 
 void initial() 
 {
+	glEnable(GL_DEPTH_TEST);
+	glDepthFunc(GL_LEQUAL);
+
 	px = 0; 
-	py = 0;   
+	py = 0;    
 	objrotate = 10;
 	objx = 0, objy = 0, objz = 0;
 	speed = 0.05; 
@@ -270,20 +294,29 @@ void control2(unsigned char keys, int, int)
 	glutPostRedisplay();
 }
 
-
+void reshape(int w, int h)
+{
+	glViewport(0, 0, w, h);
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+	gluPerspective(70, 16 / 9, 1, 75);
+	glMatrixMode(GL_MODELVIEW);
+}
 
 int main(int argc, char** argv)
 {
 	glutInit(&argc, argv);
-	glutInitDisplayMode(GLUT_SINGLE | GLUT_RGB);
+	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH | GLUT_STENCIL | GLUT_ALPHA);
 	glutInitWindowSize(1000, 500);  
 	glutInitWindowPosition(100, 100);
 	glutCreateWindow("sonic CD 2");  
 	glewInit();
 	initial();
 	glutDisplayFunc(drawing);  
-	glutTimerFunc(0,timer,0);
-	glutKeyboardFunc(control1); 
+	glutTimerFunc(0,timer,0); 
+	glutReshapeFunc(reshape);
+	glutKeyboardFunc(control1);  
+	glutSpecialFunc(specialkeys);
 	glutKeyboardUpFunc(control2);
 	glutMainLoop();
 	return 0;
